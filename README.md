@@ -35,6 +35,4 @@ Let people know how they can dive into the project, include important links to t
 A short snippet describing the license (MIT, Apache, etc.)
 
 
-[//]: # https://confluence.atlassian.com/bitbucketserver/markdown-syntax-guide-776639995.html#Markdownsyntaxguide-Backslashescapes
-
 
