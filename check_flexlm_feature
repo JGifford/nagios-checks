@@ -1,0 +1,158 @@
+#!/bin/bash
+
+PROGNAME=$(basename $0)
+RELEASE="Revision 0.8"
+
+LMUTIL="/cm/shared/apps/FLEXlm/11_13_0_0/bin/lmutil"
+
+print_release() {
+    echo "$RELEASE"
+    exit ${E_UNKNOWN}
+
+}
+print_usage() {
+#    echo "Usage: $PROGNAME [ -l LICENSE_FILE ] | [ -s PORT@SERVER ] -f FEATURE -w warning -c critical"
+    echo "Usage: $PROGNAME -s PORT@SERVER -f FEATURE -w warning -c critical"
+    echo "Return Nagios-compatible check on FlexLM Feature usage"
+    echo ""
+    echo "Note: Requires \"FlexLM's lmutil\" toolkit..."
+    echo ""
+    echo "Mandatory arguments:"
+    echo "  -s PORT@SERVER          port (integer) and server (IP or FQDN) where"
+    echo "                          the license manager may be contacted."
+    echo ""
+    echo "  -f FEATURE              FlexLM feature in question"
+    echo ""
+    echo "  -w WARNING              A warning status is returned if WARNING is greater"
+    echo "                          than or equal to the number of FEATURE in use."
+    echo "                          WARNING should be less than or equal to CRITICAL"
+    #                               Could this be re-written to use a percent?
+    #                               How does the User figure out the upper boundary (issued)?
+    echo ""
+    echo "  -c CRITICAL             A critical status is returned if CRITICAL is greater"
+    echo "                          than or equal to the number of FEATURE in use."
+    echo "                          CRITICAL should be greater than or equal to WARNING"
+    echo ""
+    echo "Exit status:"
+    echo "  0  if OK/Success"
+    echo "  1  if WARNING"
+    echo "  2  if CRITICAL"
+    echo "  3  if UNKNOWN"
+    echo ""
+    exit ${E_UNKNOWN}
+}
+
+while getopts "f:l:s:w:c:huv" option
+do
+  case $option in
+      f) feature=$OPTARG ;;
+#      l) license_file=$OPTARG ;;
+      s) port_server=$OPTARG ;;
+      w) warning_used=$OPTARG ;;
+      c) critical_used=$OPTARG ;;
+      h) print_usage
+	  exit ${E_UNKNOWN} ;;
+      u) print_usage
+	  exit ${E_UNKNOWN} ;;
+      v) print_release
+	  exit ${E_UNKNOWN} ;;
+      *) exit ${E_UNKNOWN} ;;
+  esac
+done
+
+
+E_SUCCESS="0"
+E_WARNING="1"
+E_CRITICAL="2"
+E_UNKNOWN="3"
+
+
+#echo "License File: >"$license_file"<"
+#echo "Port & Server: >"$port_server"<"
+#echo "Feature: >"$feature"<"
+###############################
+# If not enough switches
+###############################
+if [ -z $port_server ]
+then
+    echo "UNKNOWN - missing -s PORT@SERVER"
+    exit ${E_UNKNOWN}
+elif [ -z $feature ]
+then
+    echo "UNKNOWN - missing -f FEATURE"
+    exit ${E_UNKNOWN}
+elif [ -z $warning_used ]
+then
+    echo "UNKNOWN - missing -w WARNING"
+    exit ${E_UNKNOWN}
+elif [ -z $critical_used ]
+then
+    echo "UNKNOWN - missing -c CRITICAL"
+    exit ${E_UNKNOWN}
+fi   
+
+###############################
+# check if -c is greater than -w
+###############################
+if [ $warning_used -gt $critical_used ]
+then
+    echo "UNKNOWN - WARNING is greater than CRITICAL"
+    exit ${E_UNKNOWN}
+fi   
+
+#echo "Command: >$LMUTIL lmstat -c $port_server -f $feature"
+feature_usage_info=`$LMUTIL lmstat -c $port_server -f $feature | grep $feature`
+users=`echo $feature_usage_info | grep -oP '\(\K[^)]+'`
+response=$?
+###############################
+# If lmutil returns an error
+###############################
+if [ $response -ne 0 ]
+then
+    echo "UNKNOWN - lmutil returned error: $response"
+    exit ${E_UNKNOWN}
+fi
+
+#echo "Feature Usage: >"$feature_usage_info"<"
+#echo "Users: >"$users"<"
+#echo "Response: >"$response"<"
+
+# From http://stackoverflow.com/questions/12974162/extract-numbers-from-a-string-using-sed-and-regular-expr
+#
+# Expects a string for the Feature that looks like this:
+# Users of FEATURE: (Total of XX licenses issued; Total of YY licenses in use)
+#
+in_use=`echo $feature_usage_info | sed -r 's/([^0-9]*([0-9]*)){2}.*/\2/'`
+issued=`echo $feature_usage_info | sed -r 's/([^0-9]*([0-9]*)){1}.*/\2/'`
+if [ -z $in_use ]
+then
+   echo "UNKNOWN - lmutil output not recognized"
+   exit ${E_UNKNOWN}
+fi
+if [ -z $issued
+then
+   echo "UNKNOWN - lmutil output not recognized"
+   exit ${E_UNKNOWN}
+fi
+    
+
+exit ${E_UNKNOWN}
+
+if [ $percent_used -lt $warning_used ]
+then
+    echo "OK - $percent_used% memory used"
+    exit ${E_SUCCESS}
+elif [ $percent_used -lt $critical_used ]
+then
+    echo "WARNING - $percent_used% memory used"
+    exit ${E_WARNING}
+elif [ $percent_used -ge $critical_used ]
+then
+    echo "CRITICAL - $percent_used% memory used"
+    exit ${E_CRITICAL}
+else
+   echo "Huh?"
+   exit ${E_UNKNOWN}
+fi
+
+exit ${E_UNKNOWN}

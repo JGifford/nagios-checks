@@ -1,0 +1,250 @@
+#!/bin/bash
+
+PROGNAME=$(basename $0)
+RELEASE="Revision 0.8"
+export SGE_ROOT="/cm/shared/apps/sge/2011.11p1"
+QSTAT="/cm/shared/apps/sge/2011.11p1/bin/linux-x64/qstat"
+
+print_release() {
+    echo "$RELEASE"
+    exit ${E_UNKNOWN}
+
+}
+print_usage() {
+    echo "Usage: $PROGNAME -w warning -c critical -n {range}"
+    echo "Return Nagios-compatible check on HPC core usage"
+    echo ""
+    echo "Mandatory arguments:"
+    echo "  -w WARNING              WARN when utilization exceeds this percent"
+    echo "                          an integer, i.e., 50 is 50%"
+    echo "                          WARNING should be less than or equal to CRITICAL"
+    echo "                          WARNING (and CRITICAL) shouldn't ever be zero (0)"
+    echo ""
+    echo "  -c CRITICAL             CRIT when utilization exceeds this percent"
+    echo "                          an integer"
+    echo "                          CRITICAL should be greater than or equal to WARNING"
+    echo ""
+    echo "  -n                      a range of nodes to grep for"
+    echo "                          example: 1-4"
+    echo "                          example: 5-8"
+    echo "                          example: 6"
+    echo ""
+    echo "Exit status:"
+    echo "  0  if OK/Success"
+    echo "  1  if WARNING"
+    echo "  2  if CRITICAL"
+    echo "  3  if UNKNOWN"
+    echo ""
+    exit ${E_UNKNOWN}
+}
+
+while getopts "n:w:c:huv" option
+do
+  case $option in
+      n) node_list=$OPTARG ;;
+      w) warning_used=$OPTARG ;;
+      c) critical_used=$OPTARG ;;
+      h) print_usage
+	  exit ${E_UNKNOWN} ;;
+      u) print_usage
+	  exit ${E_UNKNOWN} ;;
+      v) print_release
+	  exit ${E_UNKNOWN} ;;
+      *) exit ${E_UNKNOWN} ;;
+  esac
+done
+
+
+E_SUCCESS="0"
+E_WARNING="1"
+E_CRITICAL="2"
+E_UNKNOWN="3"
+
+###############################
+# If not enough switches
+###############################
+if [ -z "$warning_used" ]
+then
+    echo "UNKNOWN - missing -w WARNING"
+    exit ${E_UNKNOWN}
+elif [ -z "$critical_used" ]
+then
+    echo "UNKNOWN - missing -c CRITICAL"
+    exit ${E_UNKNOWN}
+elif [ -z "$node_list" ]
+then
+    echo "UNKNOWN - missing -n CRITICAL"
+    exit ${E_UNKNOWN}
+fi   
+###############################
+# check if -c is greater than -w
+###############################
+if [ $warning_used -gt $critical_used ]
+then
+    echo "UNKNOWN - WARNING ($warning_used) is greater than CRITICAL ($critical_used)"
+    exit ${E_UNKNOWN}
+fi   
+
+###############################
+# Query the queue stat
+###############################
+# Build the queue usage into an array
+queue_usage=($(\
+# display the current queue status
+$QSTAT -f |\
+# grep out the node_list we're looking for
+grep "node00[$node_list]" |\
+# isolate the "reserved/used/total" (third) column
+awk '{ print $3 }' |\
+# keep a running sum of each field
+awk -F/ '{
+ reserved+=$1
+ used+=$2
+ total+=$3
+}
+# Comment here
+END { print reserved" "used" "total }'))
+response=$? # if something above fails
+
+###############################
+# If something fails
+###############################
+if [ "$response" -ne 0 ]
+then
+    echo "UNKNOWN - something failed: $response"
+    exit ${E_UNKNOWN}
+fi
+
+###############################
+# If we don't get an answer
+###############################
+if [ -z "${queue_usage[0]}" -o -z "${queue_usage[1]}" -o -z "${queue_usage[2]}" ]
+then
+   echo "UNKNOWN - output not recognized: (${queue_usage[0]},${queue_usage[1]},${queue_usage[2]}); |$response;${queue_usage[*]}"
+   exit ${E_UNKNOWN}
+fi
+###############################
+# Calculate percent used
+###############################
+## TESTING, for when no one is using the cluster
+percent_used=$(awk "BEGIN { pc=100*5/${queue_usage[2]}; print pc }")
+used=$(awk "BEGIN { pc=100*5/${queue_usage[2]}; print int(pc*100) }")
+
+## PRODUCTION
+percent_used=$(awk "BEGIN { pc=100*${queue_usage[0]}/${queue_usage[2]}; print pc }")
+used=$(awk "BEGIN { pc=100*${queue_usage[0]}/${queue_usage[2]}; print int(pc*100) }")
+
+###############################
+perfdata="percent=$percent_used;${queue_usage[0]},${queue_usage[1]},${queue_usage[2]}"
+message="Percent of cores used: $percent_used%; | $perfdata"
+
+if [ $used -lt "$((100 * $warning_used))" ]
+then
+    echo "OK - $message"
+    exit ${E_SUCCESS}
+elif [ $used -lt "$((100 * $critical_used))" ]
+then
+    echo "WARNING - $message"
+    exit ${E_WARNING}
+elif [ $used -ge "$((100 * $critical_used))" ]
+then
+    echo "CRITICAL - $message"
+    exit ${E_CRITICAL}
+fi
+
+echo "UNKNOWN - Huh?"
+exit ${E_UNKNOWN}
+
+
+
+
+
+
+
+
+exit 0
+
+
+percent_used=($(\
+# display the current queue status
+qstat -f |\
+# grep out the node_list we're looking for
+grep "node00[$node_list]" |\
+# isolate the "reserved/used/total" (third) column
+awk '{ print $3 }' |\
+# keep a running sum of each field
+awk -F/ '{
+ reserved+=$1
+ used+=$2
+ total+=$3
+}
+# Calculate the Percentage Used of Total
+# 5 is supposed to be used
+END { print 100*5/total }'))
+exit 0
+
+##########
+# Works
+node_list=5-8
+node_list=1-4
+
+# Build the queue usage into an array
+queue_usage=($(\
+# display the current queue status
+qstat -f |\
+# grep out the node_list we're looking for
+grep "node00[$node_list]" |\
+# isolate the "reserved/used/total" (third) column
+awk '{ print $3 }' |\
+# keep a running sum of each field
+awk -F/ '{
+ reserved+=$1
+ used+=$2
+ total+=$3
+}
+# Comment here
+END { print reserved" "used" "total }'))
+
+# Use the queue_usage() array
+echo "Reserved: >"${queue_usage[0]}"<"
+echo "Used: >"${queue_usage[1]}"<"
+echo "Total: >"${queue_usage[2]}"<"
+
+
+exit 0
+
+echo "hello world"
+
+USAGE=`\
+# display the current queue status
+qstat -f |\
+# grep out the nodes we're looking for
+grep "node00[5-8]" |\
+# isolate the third column: reserved/used/total
+awk '{ print $3 }' |\
+# add them all up
+awk -F/ '{
+ reserved+=$1
+ used+=$2
+ total+=$3
+}
+# Comment here
+END { print reserved" "used" "total }'
+# End the executed
+`
+
+echo "Usage: >"$USAGE"<"
+
+echo "##################################"
+
+echo "Var: >$var<"
+declare $( awk 'BEGIN{print "var=17"}' )
+echo "Var: >$var<"
+
+echo "##################################"
+
+# http://stackoverflow.com/questions/14505026/set-variable-in-current-shell-from-awk
+read a b c <<< $( echo "$USAGE" | awk '{ print $1" "$2" "$3}' );echo $a"x"$b"x"$c
+
+echo "##################################"
+echo "##################################"
