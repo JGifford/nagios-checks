@@ -15,7 +15,7 @@ In essense, they are my attempts to scratch very particular itches that I've enc
 
 ## Installation
 
-Temporary hint: Copy **check_* ** scripts into your Nagios' **libexec** directory and ensure that they are all executable (chmod 755). You may also need to update certain variables inside to match your local situation.
+Temporary hint: Copy `check_* scripts into your Nagios' **libexec** directory and ensure that they are all executable (chmod 755). You may also need to update certain variables inside to match your local situation.
 Provide code examples and explanations of how to get the project.
 
 ## API Reference
