@@ -73,7 +73,7 @@ then
     exit ${E_UNKNOWN}
 elif [ -z "$node_list" ]
 then
-    echo "UNKNOWN - missing -n CRITICAL"
+    echo "UNKNOWN - missing -n NODES"
     exit ${E_UNKNOWN}
 fi   
 ###############################
