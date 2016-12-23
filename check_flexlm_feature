@@ -23,13 +23,16 @@ print_usage() {
     echo ""
     echo "  -f FEATURE              FlexLM feature in question"
     echo ""
-    echo "  -w WARNING              A warning status is returned if WARNING is greater"
-    echo "                          than or equal to the number of FEATURE in use."
+    echo "  -w WARNING              WARN when this number of licenses are in use."
+    echo "                          A warning status is returned if WARNING is greater"
+    echo "                          than or equal to the number of FEATURE licenses in use."
     echo "                          WARNING should be less than or equal to CRITICAL"
+    echo "                          WARNING (and CRITICAL) shouldn't ever be zero (0)"
     #                               Could this be re-written to use a percent?
     #                               How does the User figure out the upper boundary (issued)?
     echo ""
-    echo "  -c CRITICAL             A critical status is returned if CRITICAL is greater"
+    echo "  -c CRITICAL             CRIT when this number of licenses are in use."
+    echo "                          A critical status is returned if CRITICAL is greater"
     echo "                          than or equal to the number of FEATURE in use."
     echo "                          CRITICAL should be greater than or equal to WARNING"
     echo ""
@@ -73,19 +76,19 @@ E_UNKNOWN="3"
 ###############################
 # If not enough switches
 ###############################
-if [ -z $port_server ]
+if [ -z "$port_server" ]
 then
     echo "UNKNOWN - missing -s PORT@SERVER"
     exit ${E_UNKNOWN}
-elif [ -z $feature ]
+elif [ -z "$feature" ]
 then
     echo "UNKNOWN - missing -f FEATURE"
     exit ${E_UNKNOWN}
-elif [ -z $warning_used ]
+elif [ -z "$warning_used" ]
 then
     echo "UNKNOWN - missing -w WARNING"
     exit ${E_UNKNOWN}
-elif [ -z $critical_used ]
+elif [ -z "$critical_used" ]
 then
     echo "UNKNOWN - missing -c CRITICAL"
     exit ${E_UNKNOWN}
@@ -96,21 +99,29 @@ fi
 ###############################
 if [ $warning_used -gt $critical_used ]
 then
-    echo "UNKNOWN - WARNING is greater than CRITICAL"
+    echo "UNKNOWN - WARNING ($warning_used) is greater than CRITICAL ($critical_used)"
     exit ${E_UNKNOWN}
 fi   
 
 #echo "Command: >$LMUTIL lmstat -c $port_server -f $feature"
 feature_usage_info=`$LMUTIL lmstat -c $port_server -f $feature | grep $feature`
-users=`echo $feature_usage_info | grep -oP '\(\K[^)]+'`
-response=$?
+response=$? # if the lmutil fails
 ###############################
 # If lmutil returns an error
 ###############################
-if [ $response -ne 0 ]
+if [ "$response" -ne 0 ]
 then
     echo "UNKNOWN - lmutil returned error: $response"
     exit ${E_UNKNOWN}
+fi
+###############################
+# If lmutil returns but bad data
+###############################
+users=`echo $feature_usage_info | grep -oP '\(\K[^)]+'`
+if [ -z "$users" ]
+then
+   echo "UNKNOWN - lmutil output not recognized"
+   exit ${E_UNKNOWN}
 fi
 
 #echo "Feature Usage: >"$feature_usage_info"<"
@@ -122,37 +133,39 @@ fi
 # Expects a string for the Feature that looks like this:
 # Users of FEATURE: (Total of XX licenses issued; Total of YY licenses in use)
 #
+###############################
+# Grab the in-use and issued
+# if we can't find them, exit
+###############################
 in_use=`echo $feature_usage_info | sed -r 's/([^0-9]*([0-9]*)){2}.*/\2/'`
 issued=`echo $feature_usage_info | sed -r 's/([^0-9]*([0-9]*)){1}.*/\2/'`
-if [ -z $in_use ]
-then
-   echo "UNKNOWN - lmutil output not recognized"
-   exit ${E_UNKNOWN}
-fi
-if [ -z $issued
+#echo $in_use
+#echo $issued
+#echo $warning_used
+#echo $critical_used
+if [ -z "$in_use" -o -z "$issued" ]
 then
    echo "UNKNOWN - lmutil output not recognized"
    exit ${E_UNKNOWN}
 fi
     
+###############################
+perfdata="$feature=$issued;$in_use"
+message="Total of $issued licenses issued; Total of $in_use licenses in use; | $perfdata" 
 
-exit ${E_UNKNOWN}
-
-if [ $percent_used -lt $warning_used ]
+if [ $in_use -lt $warning_used ]
 then
-    echo "OK - $percent_used% memory used"
+    echo "OK - $message"
     exit ${E_SUCCESS}
-elif [ $percent_used -lt $critical_used ]
+elif [ $in_use -lt $critical_used ]
 then
-    echo "WARNING - $percent_used% memory used"
+    echo "WARNING - $message"
     exit ${E_WARNING}
-elif [ $percent_used -ge $critical_used ]
+elif [ $in_use -ge $critical_used ]
 then
-    echo "CRITICAL - $percent_used% memory used"
+    echo "CRITICAL - $message"
     exit ${E_CRITICAL}
-else
-   echo "Huh?"
-   exit ${E_UNKNOWN}
 fi
 
+echo "UNKNOWN - Huh?"
 exit ${E_UNKNOWN}
