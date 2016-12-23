@@ -6,16 +6,27 @@
 
 ## Code Example
 
-Show what the library does as concisely as possible, developers should be able to figure out **how** your project solves their problem by looking at the code example. Make sure the API you are showing off is obvious, and that your code is short and concise.
+### check_flexlm_expire
+./check_flexlm_expire -w 60 -c 30 -f abaqus
+
+### check_flexlm_feature
+
+### check_hpc_queues
+
+### check_mem
+
+### check_sw_vpn_tunnels
 
 ## Motivation
 
-I have developed these scripts largely in response to not having 
+I have developed these scripts largely in response to not having something I needed. 
+
 In essense, they are my attempts to scratch very particular itches that I've encountered.
 
 ## Installation
 
 Temporary hint: Copy `check_*` scripts into your Nagios **libexec** directory and ensure that they are all executable (chmod 755). You may also need to update certain variables inside to match your local situation.
+
 Provide code examples and explanations of how to get the project.
 
 ## API Reference
