@@ -1,0 +1,68 @@
+#!/bin/bash
+
+PROGNAME=$(basename $0)
+RELEASE="Revision 0.8"
+
+#warning_used=26
+#critical_used=28
+
+print_release() {
+    echo "$RELEASE"
+    exit ${E_UNKNOWN}
+
+}
+print_usage() {
+    echo ""
+    echo "$PROGNAME $RELEASE - check memory utilization script for Nagios"
+    echo "(Uses \"free -m\"...)"
+    echo ""
+    echo "Usage: $PROGNAME -w warning -c critical"
+    echo ""
+    echo "Note: script doesn't check if -c is greater than -w"
+    echo ""
+    exit ${E_UNKNOWN}
+}
+
+while getopts "w:c:huv" option
+do
+  case $option in
+      w) warning_used=$OPTARG ;;
+      c) critical_used=$OPTARG ;;
+      h) print_usage
+          exit ${E_UNKNOWN} ;;
+      u) print_usage
+          exit ${E_UNKNOWN} ;;
+      v) print_release
+          exit ${E_UNKNOWN} ;;
+      *) exit ${E_UNKNOWN} ;;
+  esac
+done
+
+
+E_SUCCESS="0"
+E_WARNING="1"
+E_CRITICAL="2"
+E_UNKNOWN="3"
+
+percent_used=`free -m |awk '/Mem:/ { total=$2 } /buffers\/cache/ { used=$3 } END { print int(100*used/total)}\
+'`
+
+
+if [ $percent_used -lt $warning_used ]
+then
+    echo "OK - $percent_used% memory used"
+    exit ${E_SUCCESS}
+elif [ $percent_used -lt $critical_used ]
+then
+    echo "WARNING - $percent_used% memory used"
+    exit ${E_WARNING}
+elif [ $percent_used -ge $critical_used ]
+then
+    echo "CRITICAL - $percent_used% memory used"
+    exit ${E_CRITICAL}
+else
+   echo "Huh?"
+   exit ${E_UNKNOWN}
+fi
+
+exit ${E_UNKNOWN}
