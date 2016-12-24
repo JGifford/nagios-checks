@@ -121,7 +121,7 @@ flexlm_date="22-jan-2017"
 # Assuming the license feature expires at midnight
 date_suffix="23:59:59"
 date_expire=$flexlm_date" "$date_suffix
-date_today=$(date "+%d-%b-%Y")" "$date_suffix
+date_today=$(/bin/date "+%d-%b-%Y")" "$date_suffix
 seconds_in_day=86400
 
 # Should we have some error checking?
@@ -130,8 +130,11 @@ seconds_in_warn=$(($warning_days  * $seconds_in_day))
 seconds_in_crit=$(($critical_days * $seconds_in_day))
 
 # Get the seconds for expire and for today (since the Epoch)
-epoch_expire=$(date --date="$date_expire" "+%s")
-epoch_today=$(date --date="$date_today" "+%s")
+# --date works on CentOS, but not Mac OSX
+#epoch_expire=$(/bin/date --date="$date_expire" "+%s")
+#epoch_today=$(/bin/date  --date="$date_today"  "+%s")
+epoch_expire=$(/bin/date -j -f "%d-%b-%Y %H:%M:%S" "$date_expire" "+%s")
+epoch_today=$(/bin/date  -j -f "%d-%b-%Y %H:%M:%S" "$date_today"  "+%s")
 
 [ -n "$DEBUG" ] && echo ""
 [ -n "$DEBUG" ] && echo "date  expire: " $date_expire
