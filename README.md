@@ -7,7 +7,8 @@
 ## Code Example
 
 ### check_flexlm_expire
-./check_flexlm_expire -w 60 -c 30 -f abaqus
+    ./check_flexlm_expire -s PORT@HOSTNAME -w WARN_DAYS -c CRIT_DAYS -f FEATURE
+Checks the license server (answering at `PORT@HOSTNAME`) for the licensed FEATURE and reports back if it is within WARN_DAYS or CRIT_DAYS of expiring.
 
 ### check_flexlm_feature
 
