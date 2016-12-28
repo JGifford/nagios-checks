@@ -11,14 +11,19 @@
 Checks the FlexLM license server (answering at `PORT@HOSTNAME`) for the licensed `FEATURE` and reports back if it is within `WARN_DAYS` or `CRIT_DAYS` of expiring.
 
 Note: You'll need to update the `LMUTIL` variable (toward the top of the script) to point to your local installation (path) of FlexLM's `lmutil` utility.
+This does not need to run on the same host as the FlexLM license server/daemon. It should be possible to use the `PORT@HOSTNAME` to query remote license servers.
+If you are running on the same host as your license server/daemon, you can swap out `PORT@HOSTNAME` for the path to the license file.
 
 Note: This was tested on CentOS 6.5 and should work on OSX if you swap out the commented `epoch_*` pairs of lines (search script for "OSX").
 
 ### check_flexlm_feature
     ./check_flexlm_feature.sh -s PORT@HOSTNAME -w WARN_LIC -c CRIT_LIC -f FEATURE
-Checks the FlexLM license server (answering at `PORT@HOSTNAME`) for the licensed `FEATURE` and reports back if it the number of licenses in use is outside `WARN_LIC` or `CRIT_LIC`.
+Checks the FlexLM license server (answering at `PORT@HOSTNAME`) for the licensed `FEATURE` and reports back if the number of licenses in use is outside `WARN_LIC` or `CRIT_LIC`.
+Provides Nagios' perfdata as well (FEATURE=ISSUED;IN_USE).
 
 Note: You'll need to update the `LMUTIL` variable (toward the top of the script) to point to your local installation (path) of FlexLM's `lmutil` utility.
+This does not need to run on the same host as the FlexLM license server/daemon. It should be possible to use the `PORT@HOSTNAME` to query remote license servers.
+If you are running on the same host as your license server/daemon, you can swap out `PORT@HOSTNAME` for the path to the license file.
 
 Note: This was tested on CentOS 6.5
 

@@ -8,7 +8,7 @@ LMUTIL="/cm/shared/apps/FLEXlm/11_13_0_0/bin/lmutil"
 # ---------------------------------------------------------
 
 PROGNAME=$(basename $0)
-RELEASE="Revision 0.8"
+RELEASE="Revision 0.9"
 
 #################################################
 ## To-do list
