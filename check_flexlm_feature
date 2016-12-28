@@ -1,9 +1,33 @@
 #!/bin/bash
 
+# ---------------------------------------------------------
+# Settings that might be useful to change
+DEBUG="true"
+LMUTIL="/cm/shared/apps/FLEXlm/11_13_0_0/bin/lmutil"
+# That's all, stop editing!
+# ---------------------------------------------------------
+
 PROGNAME=$(basename $0)
 RELEASE="Revision 0.8"
 
-LMUTIL="/cm/shared/apps/FLEXlm/11_13_0_0/bin/lmutil"
+#################################################
+## To-do list
+##
+# check if WARNING is zero (CRITICAL, too?)
+# check if WARN & CRIT are integers
+# Could this (WARN & CRIT) be re-written to use a percent?
+# How does the User figure out the upper boundary (licenses issued)?
+#################################################
+
+[ -n "$DEBUG" ] && echo "DEBUG is turned on"
+
+#############################
+# Standard Nagios exit values
+E_SUCCESS="0"
+E_WARNING="1"
+E_CRITICAL="2"
+E_UNKNOWN="3"
+#############################
 
 print_release() {
     echo "$RELEASE"
@@ -11,7 +35,6 @@ print_release() {
 
 }
 print_usage() {
-#    echo "Usage: $PROGNAME [ -l LICENSE_FILE ] | [ -s PORT@SERVER ] -f FEATURE -w warning -c critical"
     echo "Usage: $PROGNAME -s PORT@SERVER -f FEATURE -w warning -c critical"
     echo "Return Nagios-compatible check on FlexLM Feature usage"
     echo ""
@@ -28,8 +51,6 @@ print_usage() {
     echo "                          than or equal to the number of FEATURE licenses in use."
     echo "                          WARNING should be less than or equal to CRITICAL"
     echo "                          WARNING (and CRITICAL) shouldn't ever be zero (0)"
-    #                               Could this be re-written to use a percent?
-    #                               How does the User figure out the upper boundary (issued)?
     echo ""
     echo "  -c CRITICAL             CRIT when this number of licenses are in use."
     echo "                          A critical status is returned if CRITICAL is greater"
@@ -49,7 +70,6 @@ while getopts "f:l:s:w:c:huv" option
 do
   case $option in
       f) feature=$OPTARG ;;
-#      l) license_file=$OPTARG ;;
       s) port_server=$OPTARG ;;
       w) warning_used=$OPTARG ;;
       c) critical_used=$OPTARG ;;
@@ -63,16 +83,6 @@ do
   esac
 done
 
-
-E_SUCCESS="0"
-E_WARNING="1"
-E_CRITICAL="2"
-E_UNKNOWN="3"
-
-
-#echo "License File: >"$license_file"<"
-#echo "Port & Server: >"$port_server"<"
-#echo "Feature: >"$feature"<"
 ###############################
 # If not enough switches
 ###############################
