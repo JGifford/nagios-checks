@@ -28,6 +28,17 @@ If you are running on the same host as your license server/daemon, you can swap 
 Note: This was tested on CentOS 6.5
 
 ### check_hpc_queues
+    ./check_hpc_queues.sh -w WARN% -c CRIT% -n NODES
+
+This script may be more site-specific than what you're looking for. Our HPC (High-Performance Compute) cluster uses a tool called `qstat` to tell us the status of the various Queues.
+
+`WARN%` and `CRIT%` are integers, specifying the percentange used of those nodes before reporting a WARNING or CRITICAL status.
+
+`NODES` is `1-4` (first four nodes) or `5-8` (next four nodes) or `1-8` (first eight nodes).
+
+Note: You'll need to update the `SGE_ROOT` variable to point to your Sun Grid Engine path. You'll also want to update the `QSTAT` variable to point to your SGE `qstat` script.
+
+Note: This was tested on CentOS 6.5
 
 ### check_mem
 
