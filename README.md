@@ -8,7 +8,11 @@
 
 ### check_flexlm_expire
     ./check_flexlm_expire -s PORT@HOSTNAME -w WARN_DAYS -c CRIT_DAYS -f FEATURE
-Checks the license server (answering at `PORT@HOSTNAME`) for the licensed FEATURE and reports back if it is within WARN_DAYS or CRIT_DAYS of expiring.
+Checks the FlexLM license server (answering at `PORT@HOSTNAME`) for the licensed `FEATURE` and reports back if it is within `WARN_DAYS` or `CRIT_DAYS` of expiring.
+
+Note: You'll need to update the `LMUTIL` variable (toward the top of the script) to point to your installation of FlexLM's `lmutil` utility.
+
+Note: This was tested on CentOS 6.5 and should work on OSX if you swap out the commented `epoch_*` pairs of lines (search for OSX).
 
 ### check_flexlm_feature
 
