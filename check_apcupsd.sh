@@ -2,6 +2,12 @@
 #
 # check_apcupsd 2.6
 # Nagios plugin to monitor APC Smart-UPSes and Back-UPSes using apcupsd.
+##############################
+# Download from Archive
+# wget -O check_apcupsd.sh https://web.archive.org/web/20191001001655/http://martintoft.dk/software/check_apcupsd.txt
+# sudo cp check_apcupsd.sh /usr/lib/nagios/plugins/.
+# sudo chmod 755 /usr/lib/nagios/plugins/check_apcupsd.sh
+##############################
 #
 # Website: http://martintoft.dk/?p=check_apcupsd
 #
