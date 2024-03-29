@@ -2,12 +2,13 @@
 
 # ---------------------------------------------------------
 # Settings that might be useful to change
-DEBUG="true"
+#DEBUG="true"
+LMUTIL="/cm/shared/apps/FLEXlm/11_13_0_0/bin/lmutil"
 # That's all, stop editing!
 # ---------------------------------------------------------
 
 PROGNAME=$(basename $0)
-RELEASE="Revision 0.8"
+RELEASE="Revision 0.9"
 
 #################################################
 ## To-do list
@@ -31,8 +32,10 @@ print_release() {
 
 }
 print_usage() {
-    echo "Usage: $PROGNAME -w warning -c critical "
+    echo "Usage: $PROGNAME -w warning -c critical -s PORT@SERVER -f FEATURE"
     echo "Return Nagios-compatible check on FlexLM feature expiration dates"
+    echo ""
+    echo "Note: Requires \"FlexLM's lmutil\" toolkit..."
     echo ""
     echo "Mandatory arguments:"
     echo "  -w WARNING              WARN when within this number of days of expiration"
@@ -46,8 +49,11 @@ print_usage() {
     echo "                          Assumes 11:59:59 of that date"
     echo "                          CRITICAL should be less than WARNING"
     echo ""
-    echo "  -f                      the FlexLM feature being checked"
+    echo "  -f FEATURE              the FlexLM feature being checked"
     echo "                          example: abaqus"
+    echo ""
+    echo "  -s PORT@SERVER          port (integer) and server (IP or FQDN) where"
+    echo "                          the license manager may be contacted."
     echo ""
     echo "Exit status:"
     echo "  0  if OK/Success"
@@ -58,10 +64,11 @@ print_usage() {
     exit ${E_UNKNOWN}
 }
 
-while getopts "f:w:c:huv" option
+while getopts "f:w:s:c:huv" option
 do
   case $option in
       f) feature=$OPTARG ;;
+      s) port_server=$OPTARG ;;
       w) warning_days=$OPTARG ;;
       c) critical_days=$OPTARG ;;
       h) print_usage
@@ -77,7 +84,11 @@ done
 ###############################
 # If not enough switches
 ###############################
-if [ -z "$warning_days" ]
+if [ -z "$port_server" ]
+then
+    echo "UNKNOWN - missing -s PORT@SERVER"
+    exit ${E_UNKNOWN}
+elif [ -z "$warning_days" ]
 then
     echo "UNKNOWN - missing -w WARNING"
     exit ${E_UNKNOWN}
@@ -107,17 +118,57 @@ then
 fi
 
 ###############################
+# Find the "expiry" date of FEATURE
+###############################
+[ -n "$DEBUG" ] && echo ""
+[ -n "$DEBUG" ] && echo "Port Server: "$port_server
+[ -n "$DEBUG" ] && echo "Feature:     "$feature
+feature_expiry_date=`$LMUTIL lmdiag -n -c $port_server | grep expiry | grep "\""$feature"\"" | awk '{ print $6}'`
+# Uses LMUTIL to perform a "lmdiag" command
+# -n makes it run in non-interactive mode
+# -c is the license file or the port@server
+# We're looking for the word "expiry"
+# We're looking for the FEATURE (wrapped up in double-quotes)
+# We only want the 6th field (the expiry date)
+response=$? # to catch command exit (i.e., if the lmutil fails or succeeds)
+[ -n "$DEBUG" ] && echo ""
+[ -n "$DEBUG" ] && echo "Feature \"expiry\" date: " $feature_expiry_date
+[ -n "$DEBUG" ] && echo "Response:                " $response
+
+###############################
+# If lmutil returns an error
+###############################
+if [ "$response" -ne 0 ]
+then
+    echo "UNKNOWN - lmutil returned error: $response"
+    exit ${E_UNKNOWN}
+fi
+###############################
+# If lmutil returns but bad data
+###############################
+if [ -z "$feature_expiry_date" ]
+then
+   echo "UNKNOWN - lmutil output not recognized"
+   exit ${E_UNKNOWN}
+else
+    flexlm_date=$feature_expiry_date
+    # Should we check to see if
+    # this is a date or not?
+fi
+
+###############################
+# Special case: forever
+###############################
+if [ "$flexlm_date" = "1-jan-0" ]
+then
+    # Licensed forever
+    echo "OK: perpetual license ($flexlm_date)"
+    exit ${E_SUCCESS}
+fi
+
+###############################
 # do some date calcs
 ###############################
-
-###############################
-## Test Dates
-## Replace with results from FlexLM query
-flexlm_date="17-jul-2017"
-flexlm_date="17-jan-2017"
-flexlm_date="22-jan-2017"
-###############################
-
 # Assuming the license feature expires at midnight
 date_suffix="23:59:59"
 date_expire=$flexlm_date" "$date_suffix
@@ -130,11 +181,12 @@ seconds_in_warn=$(($warning_days  * $seconds_in_day))
 seconds_in_crit=$(($critical_days * $seconds_in_day))
 
 # Get the seconds for expire and for today (since the Epoch)
-# --date works on CentOS, but not Mac OSX
-#epoch_expire=$(/bin/date --date="$date_expire" "+%s")
-#epoch_today=$(/bin/date  --date="$date_today"  "+%s")
-epoch_expire=$(/bin/date -j -f "%d-%b-%Y %H:%M:%S" "$date_expire" "+%s")
-epoch_today=$(/bin/date  -j -f "%d-%b-%Y %H:%M:%S" "$date_today"  "+%s")
+# Below works on CentOS 6.5, etc. (GNU coreutils 8.4)
+epoch_expire=$(/bin/date -d "$date_expire" "+%s")
+epoch_today=$(/bin/date  -d "$date_today"  "+%s")
+# Below works on Mac OSX
+#epoch_expire=$(/bin/date -j -f "%d-%b-%Y %H:%M:%S" "$date_expire" "+%s")
+#epoch_today=$(/bin/date  -j -f "%d-%b-%Y %H:%M:%S" "$date_today"  "+%s")
 
 [ -n "$DEBUG" ] && echo ""
 [ -n "$DEBUG" ] && echo "date  expire: " $date_expire
